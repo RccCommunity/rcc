@@ -11,15 +11,15 @@ can then use these references in other instructions.
 */
 impl CodeGenerator {
     unsafe fn codegen_expr(
-        context: LLVMContextRef,
-        builder: LLVMBuilderRef,
-        names: &mut HashMap<String, LLVMValueRef>,
+        _context: LLVMContextRef,
+        _builder: LLVMBuilderRef,
+        _names: &mut HashMap<String, LLVMValueRef>,
         expr: Expr,
     ) -> LLVMValueRef {
         match expr {
             Expr::Literal(literal) => match literal {
                 crate::parser::expr::BuiltInType::Num(_) => todo!(),
-                crate::parser::expr::BuiltInType::Char(_) => todo!(),
+                crate::parser::expr::BuiltInType::String(_) => todo!(),
                 crate::parser::expr::BuiltInType::Boolean(_) => todo!(),
             },
             Expr::Ref(_) => todo!(),
