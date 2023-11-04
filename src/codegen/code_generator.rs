@@ -10,6 +10,9 @@ When you write out instructions in LLVM, you get back `LLVMValueRef`s. You
 can then use these references in other instructions.
 */
 impl CodeGenerator {
+    /// # Safety
+    ///
+    /// This function should not be called before the horsemen are ready.
     unsafe fn codegen_expr(
         _context: LLVMContextRef,
         _builder: LLVMBuilderRef,
@@ -78,7 +81,9 @@ impl CodeGenerator {
         //     }
         // }
     }
-
+    /// # Safety
+    ///
+    /// This function should not be called before the horsemen are ready.
     pub unsafe fn codegen(input: Vec<Expr>) {
         let context = llvm::core::LLVMContextCreate();
         let module = llvm::core::LLVMModuleCreateWithName(b"example_module\0".as_ptr() as *const _);

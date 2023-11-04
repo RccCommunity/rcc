@@ -83,7 +83,7 @@ pub enum Number {
 
 impl From<Number> for BuiltInType {
     fn from(value: Number) -> Self {
-        return BuiltInType::Num(value);
+        BuiltInType::Num(value)
     }
 }
 
@@ -97,7 +97,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 16),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 16),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -112,7 +112,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 8),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 8),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -127,7 +127,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 2),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 2),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -139,7 +139,7 @@ impl<'a> Number {
                 one_of("0123456789"),
                 many0(character::complete::char('_')),
             ))),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 10),
+            |out: &str| str::replace(out, "_", "").parse::<i64>(),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
