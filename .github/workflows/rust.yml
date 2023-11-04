@@ -20,7 +20,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ inputs.rust-version }}
+          toolchain: stable
           override: true
           components: rustfmt, clippy
       - name: Set up cargo cache
@@ -46,7 +46,6 @@ jobs:
           cargo install --locked cargo-udeps || true
           cargo install --locked cargo-audit || true
           cargo install --locked cargo-pants || true     
-          rustup component add rustfmt   
       - name: Rustfmt
         run: cargo fmt --all -- --check  
       - name: Check
