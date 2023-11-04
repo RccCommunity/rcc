@@ -12,60 +12,53 @@ env:
 jobs:
   
   check:
-    name: Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+      - name: Check out
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: ${{ inputs.rust-version }}
           override: true
-      - run: cargo check
-
-  test:
-    name: Test Suite
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
+          components: rustfmt, clippy
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: cargo test
-
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add rustfmt
-      - run: cargo fmt --all -- --check
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - run: rustup component add clippy
-      - run: cargo clippy -- -D warnings
-  
-
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - run: cargo build --verbose
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/            
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Lint
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy -- -D warnings          
+      - name: Install cargo check tools
+        run: |
+          cargo install --locked cargo-deny || true
+          cargo install --locked cargo-outdated || true
+          cargo install --locked cargo-udeps || true
+          cargo install --locked cargo-audit || true
+          cargo install --locked cargo-pants || true     
+          rustup component add rustfmt   
+      - name: Rustfmt
+        run: cargo fmt --all -- --check  
+      - name: Check
+        run: |
+          cargo deny check
+          cargo outdated --exit-code 1
+          cargo udeps
+          rm -rf ~/.cargo/advisory-db
+          cargo audit
+          cargo pants          
+      - name: Test
+        run: cargo test
+      - name: Build
+        run: cargo build --verbose
     
