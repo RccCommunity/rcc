@@ -16,13 +16,6 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt, clippy
       - name: Set up cargo cache
         uses: actions/cache@v3
         with:
@@ -33,6 +26,13 @@ jobs:
           restore-keys: |
             debug-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml') }}-
             debug-${{ runner.os }}- 
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          override: true
+          components: rustfmt, clippy
       - name: Lint
         run: |
           cargo fmt --all -- --check
