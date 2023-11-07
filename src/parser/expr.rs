@@ -3,11 +3,11 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::{self, complete::one_of},
-    combinator::{map, map_res, recognize},
+    combinator::{map, map_parser, map_res, recognize},
     error::VerboseError,
     multi::{many0, many1},
     number::complete::double,
-    sequence::{preceded, terminated},
+    sequence::{preceded, separated_pair, terminated},
     IResult, Parser,
 };
 //未附加属性的表达式
@@ -83,7 +83,7 @@ pub enum Number {
 
 impl From<Number> for BuiltInType {
     fn from(value: Number) -> Self {
-        return BuiltInType::Num(value);
+        BuiltInType::Num(value)
     }
 }
 
@@ -97,7 +97,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 16),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 16),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -112,7 +112,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 8),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 8),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -127,7 +127,7 @@ impl<'a> Number {
                     many0(character::complete::char('_')),
                 ))),
             ),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 2),
+            |out: &str| i64::from_str_radix(&str::replace(out, "_", ""), 2),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -139,7 +139,7 @@ impl<'a> Number {
                 one_of("0123456789"),
                 many0(character::complete::char('_')),
             ))),
-            |out: &str| i64::from_str_radix(&str::replace(&out, "_", ""), 10),
+            |out: &str| str::replace(out, "_", "").parse::<i64>(),
         )
         .parse(str)
         .map(|result| (result.0, Number::Integer(result.1)))
@@ -157,14 +157,22 @@ impl<'a> Number {
     }
 
     pub fn parse_double(str: &'a str) -> IResult<&'a str, Number, VerboseError<&str>> {
-        double(str).map(|result| (result.0, Number::Float(result.1)))
+        map_parser(
+            recognize(alt((
+                separated_pair(Self::parse_dec, tag("."), Self::parse_dec),
+                separated_pair(Self::parse_dec, tag("E-"), Self::parse_dec),
+                separated_pair(Self::parse_dec, tag("K-"), Self::parse_dec),
+            ))),
+            |_| double(str).map(|result| (result.0, Number::Float(result.1))),
+        )
+        .parse(str)
     }
 }
 
 impl<'a> BuiltInType {
     #[allow(dead_code)]
     fn parse_num(str: &'a str) -> IResult<&'a str, BuiltInType, VerboseError<&str>> {
-        alt((Number::parse_integer, Number::parse_double))
+        alt((Number::parse_double, Number::parse_integer))
             .parse(str)
             .map(|result| (result.0, result.1.into()))
     }
@@ -190,33 +198,36 @@ impl<'a> BuiltInType {
         .parse(str)
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_built_in_type() {
+    fn test_parse_boolean() {
         let a = "true";
         assert_eq!(
-            BuiltInType::parse_built_in_type(a).unwrap().1,
+            BuiltInType::parse_boolean(a).unwrap().1,
             BuiltInType::Boolean(true)
         )
     }
 
     #[test]
     fn test_parse_number() {
-        let a = "0x1234";
         assert_eq!(
-            BuiltInType::parse_num(a).unwrap().1,
+            BuiltInType::parse_num("0x1234").unwrap().1,
             BuiltInType::Num(Number::Integer(4660))
         );
-        let b = "0b1111";
         assert_eq!(
-            BuiltInType::parse_num(b).unwrap().1,
+            BuiltInType::parse_num("0b1111").unwrap().1,
             BuiltInType::Num(Number::Integer(15))
         );
-        let c = "0.123";
-        println!("{:?}", BuiltInType::parse_num(c))
+        assert_eq!(
+            BuiltInType::parse_num("12E-12").unwrap().1,
+            BuiltInType::Num(Number::Float(1.2e-11))
+        );
+        assert_eq!(
+            BuiltInType::parse_num("12K-03").unwrap().1,
+            BuiltInType::Num(Number::Float(12.0))
+        );
     }
 }

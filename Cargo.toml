@@ -2,6 +2,7 @@
 name = "rcc"
 version = "0.1.0"
 authors = ["Kejian Chi <chiichen@qq.com>"]
+license = "MIT"
 
 [[bin]]
 name = "main"

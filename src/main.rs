@@ -8,8 +8,8 @@ extern crate nom;
 use std::fs::File;
 use std::io::Read;
 
-use codegen::codegen::CodeGenerator;
-use parser::parser::RccParser;
+use codegen::code_generator::CodeGenerator;
+use parser::rcc_parser::RccParser;
 
 fn main() {
     let mut input = String::new();
