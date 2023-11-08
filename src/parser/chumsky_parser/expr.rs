@@ -2,7 +2,7 @@ use chumsky::{extra, prelude::*, Parser};
 use std::ops::Neg;
 
 //未附加属性的表达式
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Expr {
     Invalid,
 
@@ -27,13 +27,13 @@ pub enum Expr {
 
     Operator(BuiltInOperator),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum CodeBlock {
     Code(Vec<Box<Expr>>),
 
     ReturnCode(Box<Expr>),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 // 连接运算符
 pub enum BuiltInOperator {
     /// `+`
@@ -56,7 +56,7 @@ pub enum BuiltInOperator {
     NotEqual(Box<Expr>, Box<Expr>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuiltInType {
     Num(Number),
 
@@ -64,7 +64,7 @@ pub enum BuiltInType {
 
     Boolean(bool),
 }
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Number {
     Integer(isize),
     Float(f64),
@@ -87,54 +87,105 @@ impl From<Number> for BuiltInType {
     }
 }
 
-fn parser<'a>() -> impl Parser<'a, &'a str, Expr, extra::Err<Rich<'a, char>>> {
+//TODO Use span to generate more useful runtime error messages
+pub type Span = SimpleSpan<usize>;
+pub type Spanned<T> = (T, Span);
+
+fn parser<'src>() -> impl Parser<'src, &'src str, Expr, extra::Err<Rich<'src, char>>> {
     recursive(|value| {
-        let parse_pos_num = choice((
-            just("0x").or(just("0X")).then(text::digits(16)).to_slice(),
-            just("0o").or(just("0O")).then(text::digits(8)).to_slice(),
-            just("0b").or(just("0B")).then(text::digits(2)).to_slice(),
-            text::digits(10).to_slice(),
-        ));
+        let parse_pos_integer = choice((
+            just("0x").or(just("0X")).ignore_then(
+                text::digits(16)
+                    .to_slice()
+                    .map(|res| isize::from_str_radix(&str::replace(res, "_", ""), 16)),
+            ),
+            just("0o").or(just("0O")).ignore_then(
+                text::digits(8)
+                    .to_slice()
+                    .map(|res| isize::from_str_radix(&str::replace(res, "_", ""), 8)),
+            ),
+            just("0b").or(just("0B")).ignore_then(
+                text::digits(2)
+                    .to_slice()
+                    .map(|res| isize::from_str_radix(&str::replace(res, "_", ""), 2)),
+            ),
+            text::digits(10)
+                .to_slice()
+                .map(|res| isize::from_str_radix(&str::replace(res, "_", ""), 10)),
+        ))
+        .map(|res| res.expect("Failed to parse number"));
 
         let parse_pos_float = choice((
             text::digits(10)
-                .padded()
                 .separated_by(just('.'))
                 .exactly(2)
                 .collect::<Vec<_>>(),
             text::digits(10)
-                .padded()
                 .separated_by(just("E-"))
                 .exactly(2)
                 .collect::<Vec<_>>(),
             text::digits(10)
-                .padded()
                 .separated_by(just("K-"))
                 .exactly(2)
                 .collect::<Vec<_>>(),
-        ));
+        ))
+        .to_slice()
+        .map(|res: &str| {
+            res.parse::<f64>().expect(&format!(
+                "Panic! Failed to parse the ans:{:?} while parsing  float",
+                res
+            ))
+        });
 
         let parse_float = choice((
-            just('-')
-                .then(parse_pos_float)
-                .to_slice()
-                .map(|res: &str| Number::Float(-res.parse::<f64>().unwrap())),
-            parse_pos_float
-                .to_slice()
-                .map(|res: &str| Number::Float(res.parse::<f64>().unwrap())),
+            just('-').ignore_then(parse_pos_float.map(|res| Number::Float(-res))), // Handle the leading minus sign
+            parse_pos_float.map(|res| Number::Float(res)),
         ));
 
-        let parse_number = choice((
-            just('-')
-                .then(parse_pos_num)
-                .to_slice()
-                .map(|res: &str| Number::Integer(-res.parse::<isize>().unwrap())),
-            parse_pos_num.map(|res: &str| Number::Integer(res.parse::<isize>().unwrap())),
+        let parse_integer = choice((
+            just('-').ignore_then(parse_pos_integer.map(|res| Number::Integer(-res))),
+            parse_pos_integer.map(|res| Number::Integer(res)),
         ));
+
+        let parse_boolean = choice((just("true").map(|_| true), just("false").map(|_| false)));
+
+        let parse_string = just('"')
+            .ignore_then(none_of('"').repeated())
+            .then_ignore(just('"'))
+            .to_slice();
+
+        let parse_built_in_type = choice((
+            parse_float.map(|res| BuiltInType::Num(res)),
+            parse_integer.map(|res| BuiltInType::Num(res)),
+            parse_boolean.map(|res| BuiltInType::Boolean(res)),
+            parse_string.map(|res: &str| BuiltInType::String(res.to_string())),
+        ));
+
+        let parse_built_in_ops = choice((value
+            .clone()
+            .separated_by(just('+'))
+            .exactly(2)
+            .collect::<Vec<Expr>>()
+            .map(|res| {
+                BuiltInOperator::Add(
+                    Box::new(
+                        res.get(0)
+                            .clone()
+                            .expect("Panic! Failed to retrieve lhs operands while parsing '+' ops")
+                            .clone(),
+                    ),
+                    Box::new(
+                        res.get(1)
+                            .clone()
+                            .expect("Panic! Failed to retrieve rhs operands while parsing '+' ops")
+                            .clone(),
+                    ),
+                )
+            }),));
 
         choice((
-            parse_float.map(|res| Expr::Literal(BuiltInType::Num(res))),
-            parse_number.map(|res| Expr::Literal(BuiltInType::Num(res))),
+            parse_built_in_ops.map(|res| Expr::Operator(res)),
+            parse_built_in_type.map(|res| Expr::Literal(res)),
         ))
         .recover_with(via_parser(nested_delimiters(
             '{',
@@ -151,9 +202,14 @@ mod tests {
 
     #[test]
     fn test_parser() {
+        println!("{:?}", parser().parse("123E-23"));
         assert_eq!(
             parser().parse("123E-23").output(),
             Some(&Expr::Literal(BuiltInType::Num(Number::Float(1.23e-21))))
+        );
+        assert_eq!(
+            parser().parse("-123E-23").output(),
+            Some(&Expr::Literal(BuiltInType::Num(Number::Float(-1.23e-21))))
         );
         assert_eq!(
             parser().parse("1.23").output(),
@@ -163,5 +219,23 @@ mod tests {
             parser().parse("123").output(),
             Some(&Expr::Literal(BuiltInType::Num(Number::Integer(123))))
         );
+        assert_eq!(
+            parser().parse("-0x12DC7").output(),
+            Some(&Expr::Literal(BuiltInType::Num(Number::Integer(-77255))))
+        );
+        assert_eq!(
+            parser().parse("0x12DC7").output(),
+            Some(&Expr::Literal(BuiltInType::Num(Number::Integer(77255))))
+        );
+        assert_eq!(
+            parser().parse("0b11011").output(),
+            Some(&Expr::Literal(BuiltInType::Num(Number::Integer(27))))
+        );
+        assert_eq!(
+            parser().parse("0o547").output(),
+            Some(&Expr::Literal(BuiltInType::Num(Number::Integer(359))))
+        );
+
+        println!("{:?}", parser().parse("1+2+3"));
     }
 }
