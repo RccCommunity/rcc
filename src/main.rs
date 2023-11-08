@@ -2,6 +2,8 @@ pub mod codegen;
 pub mod grammer;
 pub mod parser;
 
+extern crate ariadne;
+extern crate chumsky;
 extern crate llvm_sys as llvm;
 extern crate nom;
 
