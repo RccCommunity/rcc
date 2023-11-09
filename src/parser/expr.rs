@@ -61,23 +61,21 @@ pub struct TempBuiltInOperator<'src>(
         Box<Spanned<Expr<'src>>>,
     ),
 );
-
-impl<'src> Into<Expr<'src>> for TempBuiltInOperator<'src> {
-    fn into(self) -> Expr<'src> {
-        match self.0 .1 {
-            BinaryOps::Add => Expr::Operator(BuiltInOperator::Add(self.0 .0, self.0 .2)),
-            BinaryOps::Sub => Expr::Operator(BuiltInOperator::Sub(self.0 .0, self.0 .2)),
-            BinaryOps::Mul => Expr::Operator(BuiltInOperator::Mul(self.0 .0, self.0 .2)),
-            BinaryOps::Div => Expr::Operator(BuiltInOperator::Div(self.0 .0, self.0 .2)),
-            BinaryOps::Module => Expr::Operator(BuiltInOperator::Module(self.0 .0, self.0 .2)),
-            BinaryOps::BitAnd => Expr::Operator(BuiltInOperator::BitAnd(self.0 .0, self.0 .2)),
-            BinaryOps::BitOr => Expr::Operator(BuiltInOperator::BitOr(self.0 .0, self.0 .2)),
-            BinaryOps::Equal => Expr::Operator(BuiltInOperator::Equal(self.0 .0, self.0 .2)),
-            BinaryOps::NotEqual => Expr::Operator(BuiltInOperator::NotEqual(self.0 .0, self.0 .2)),
+impl<'src> From<TempBuiltInOperator<'src>> for Expr<'src> {
+    fn from(val: TempBuiltInOperator<'src>) -> Self {
+        match val.0 .1 {
+            BinaryOps::Add => Expr::Operator(BuiltInOperator::Add(val.0 .0, val.0 .2)),
+            BinaryOps::Sub => Expr::Operator(BuiltInOperator::Sub(val.0 .0, val.0 .2)),
+            BinaryOps::Mul => Expr::Operator(BuiltInOperator::Mul(val.0 .0, val.0 .2)),
+            BinaryOps::Div => Expr::Operator(BuiltInOperator::Div(val.0 .0, val.0 .2)),
+            BinaryOps::Module => Expr::Operator(BuiltInOperator::Module(val.0 .0, val.0 .2)),
+            BinaryOps::BitAnd => Expr::Operator(BuiltInOperator::BitAnd(val.0 .0, val.0 .2)),
+            BinaryOps::BitOr => Expr::Operator(BuiltInOperator::BitOr(val.0 .0, val.0 .2)),
+            BinaryOps::Equal => Expr::Operator(BuiltInOperator::Equal(val.0 .0, val.0 .2)),
+            BinaryOps::NotEqual => Expr::Operator(BuiltInOperator::NotEqual(val.0 .0, val.0 .2)),
         }
     }
 }
-
 #[derive(Clone, Debug, PartialEq)]
 // 连接运算符
 pub enum BuiltInOperator<'src> {
@@ -140,7 +138,7 @@ type ParserInput<'src> =
 // for runtime errors).
 //
 // We also specify an error type used by the parser. In this case, it's `Rich`, one of chumsky's default error types.
-fn expr_parser<'src>() -> impl Parser<
+pub fn expr_parser<'src>() -> impl Parser<
     'src,
     ParserInput<'src>,
     Spanned<Expr<'src>>,
@@ -380,12 +378,26 @@ fn expr_parser<'src>() -> impl Parser<
 }
 // A function node in the AST.
 #[derive(Debug)]
-struct Func<'src> {
+pub struct Func<'src> {
     args: Vec<&'src str>,
     span: Span,
     body: Spanned<Expr<'src>>,
 }
-fn funcs_parser<'src>() -> impl Parser<
+
+impl<'src> Func<'src> {
+    pub fn args(&self) -> &[&str] {
+        self.args.as_ref()
+    }
+
+    pub fn span(&self) -> SimpleSpan<usize, ()> {
+        self.span
+    }
+
+    pub fn body(&self) -> &Spanned<Expr<'src>> {
+        &self.body
+    }
+}
+pub fn funcs_parser<'src>() -> impl Parser<
     'src,
     ParserInput<'src>,
     HashMap<&'src str, Func<'src>>,
@@ -433,7 +445,7 @@ fn funcs_parser<'src>() -> impl Parser<
             for ((name, name_span), f) in fs {
                 if funcs.insert(name, f).is_some() {
                     emitter.emit(Rich::custom(
-                        name_span.clone(),
+                        name_span,
                         format!("Function '{}' already exists", name),
                     ));
                 }

@@ -90,7 +90,7 @@ pub fn lexer<'src>(
         ),
         text::digits(10)
             .to_slice()
-            .map(|res| isize::from_str_radix(&str::replace(res, "_", ""), 10)),
+            .map(|res| str::replace(res, "_", "").parse::<isize>()),
     ))
     .map(|res| res.expect("Failed to parse number"));
 
@@ -110,26 +110,25 @@ pub fn lexer<'src>(
     ))
     .to_slice()
     .map(|res: &str| {
-        res.parse::<f64>().expect(&format!(
-            "Panic! Failed to parse the ans:{:?} while parsing  float",
-            res
-        ))
+        res.parse::<f64>().unwrap_or_else(|_| {
+            panic!(
+                "Panic! Failed to parse the ans:{:?} while parsing  float",
+                res
+            )
+        })
     });
 
     let parse_float = choice((
         just('-').ignore_then(parse_pos_float.map(|res| Number::Float(-res))), // Handle the leading minus sign
-        parse_pos_float.map(|res| Number::Float(res)),
+        parse_pos_float.map(Number::Float),
     ));
 
     let parse_integer = choice((
         just('-').ignore_then(parse_pos_integer.map(|res| Number::Integer(-res))),
-        parse_pos_integer.map(|res| Number::Integer(res)),
+        parse_pos_integer.map(Number::Integer),
     ));
     // A parser for numbers
-    let parse_number = choice((
-        parse_float.map(|res| Token::Num(res)),
-        parse_integer.map(|res| Token::Num(res)),
-    ));
+    let parse_number = choice((parse_float.map(Token::Num), parse_integer.map(Token::Num)));
     // A parser for strings
     let parse_str = just('"')
         .ignore_then(none_of('"').repeated())
