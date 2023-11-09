@@ -20,18 +20,15 @@ impl CodeGenerator {
         expr: Expr,
     ) -> LLVMValueRef {
         match expr {
-            Expr::Literal(literal) => match literal {
-                crate::parser::expr::BuiltInType::Num(_) => todo!(),
-                crate::parser::expr::BuiltInType::String(_) => todo!(),
-                crate::parser::expr::BuiltInType::Boolean(_) => todo!(),
-            },
-            Expr::Ref(_) => todo!(),
-            Expr::Assign(_, _) => todo!(),
-            Expr::VarDeclaration(_, _) => todo!(),
-            Expr::Function(_, _) => todo!(),
+            Expr::Error => todo!(),
+            Expr::Literal(_) => todo!(),
+            Expr::List(_) => todo!(),
+            Expr::Local(_) => todo!(),
+            Expr::Let(_, _, _) => todo!(),
+            Expr::Then(_, _) => todo!(),
+            Expr::Call(_, _) => todo!(),
             Expr::Block(_) => todo!(),
-            Expr::IfBlock(_, _) => todo!(),
-            Expr::IfelseBlock(_, _, _) => todo!(),
+            Expr::If(_, _, _) => todo!(),
             Expr::WhileBlock(_, _) => todo!(),
             Expr::Operator(_) => todo!(),
         }
