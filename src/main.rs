@@ -3,6 +3,7 @@ pub mod lexer;
 pub mod parser;
 extern crate ariadne;
 extern crate chumsky;
+extern crate llvm_sys as llvm;
 
 use std::{env, fs};
 
