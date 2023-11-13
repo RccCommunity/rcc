@@ -10,3 +10,5 @@ name = "main"
 [dependencies]
 llvm-sys = "140"
 nom = "7.1.3"
+chumsky = { version = "1.0.0-alpha.6", features = ["label"] }
+ariadne = "0.3.0"
