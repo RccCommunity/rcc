@@ -1,11 +1,9 @@
 pub mod codegen;
-pub mod grammer;
 pub mod lexer;
 pub mod parser;
 extern crate ariadne;
 extern crate chumsky;
 extern crate llvm_sys as llvm;
-extern crate nom;
 
 use std::{env, fs};
 
